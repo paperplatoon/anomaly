@@ -1,19 +1,21 @@
 // ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-// Post-combat loot. For now loot is fully RANDOMIZED from the general card pool
-// (rarity-weighted), not tied to per-enemy tables — that keeps the pool wide.
-// (Enemy lootTables still live in data/enemies.js for a future "elevated chance
-// to drop a signature card" pass.) Tune counts/weights via LOOT_CONFIG in
-// main.js. Taking loot appends instances to the master deck (the backpack).
+// Post-combat rewards. Every victory offers a "Pick a reward" (choose 1 of 3
+// cards, or skip for 1 credit). Depending on how tough the fight was, it can
+// also drop a "Random reward" (one random card, take or skip) and/or "Salvage
+// found" (a Valuable Salvage card, take or skip):
+//   easy 1-in-5 · medium 1-in-3 · elite/landmark/boss guaranteed  (each rolled
+//   independently), so a lucky fight can add up to 3 cards to the deck.
+// Rewards stage in state.pendingRewards; the LOOT_REWARD screen resolves them.
 // ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 
 function lootConfig() {
   return typeof LOOT_CONFIG !== "undefined"
     ? LOOT_CONFIG
-    : { dropsPerFight: 3, rarityWeight: { common: 6, uncommon: 3, rare: 1 } };
+    : { pickCount: 3, rarityWeight: { common: 6, uncommon: 3, rare: 1 } };
 }
 
-// Every card whose rarity has a loot weight can drop — excludes starters and the
-// enemy-only "special" cards automatically (they have no weight).
+// Every card whose rarity has a loot weight can drop — excludes starters and
+// "special" cards (enemy-inflicted, Valuable Salvage) automatically.
 function lootPoolIds(rarity) {
   return Object.keys(cardTemplates).filter((id) => cardTemplates[id].rarity === rarity);
 }
@@ -30,25 +32,86 @@ function randomLootCard() {
   return makeCard(pool[randInt(0, pool.length - 1)]);
 }
 
-// Aggregate drops for the just-finished combat: N random cards + credits.
-function generateCombatLoot(s) {
-  const ctx = s.currentCombat.rewardContext;
-  const rolls = s.currentCombat.doubleLoot ? 2 : 1; // Artifact Scanner
-  const n = Math.max(0, Math.round(lootConfig().dropsPerFight)) * rolls;
-
+// N distinct-template random cards for the pick screen.
+function rollPickCards(n) {
   const cards = [];
-  for (let i = 0; i < n; i++) cards.push(randomLootCard());
-
-  let credits = 0;
-  ctx.killedEnemies.forEach((e) => { if (e.creditsOnKill) credits += e.creditsOnKill; });
-
-  return { cards, credits };
+  const seen = new Set();
+  let guard = 0;
+  while (cards.length < n && guard++ < 60) {
+    const c = randomLootCard();
+    if (seen.has(c.templateId)) continue;
+    seen.add(c.templateId);
+    cards.push(c);
+  }
+  return cards;
 }
 
-// Move the chosen loot instances into the deck.
-function takeLoot(instanceIds) {
-  const take = new Set(instanceIds);
-  const taken = state.pendingLoot.filter((c) => take.has(c.instanceId));
-  taken.forEach((c) => state.player.deck.push(c));
-  state.pendingLoot = state.pendingLoot.filter((c) => !take.has(c.instanceId));
+// How tough was this fight? Drives the bonus-reward odds.
+function encounterRewardTier(combat) {
+  if (combat.isBoss || combat.isLandmark || combat.isElite) return "hard";
+  const foes = combat.rewardContext.killedEnemies.concat(combat.rewardContext.capturedEnemies);
+  if (foes.some((e) => e.difficulty === "medium" || e.difficulty === "boss")) return "medium";
+  return "easy";
+}
+const REWARD_TIER_CHANCE = { easy: 1 / 5, medium: 1 / 3, hard: 1 };
+
+// Build the reward list + flat credits for the just-finished combat.
+function generateCombatRewards(s) {
+  const combat = s.currentCombat;
+  const chance = REWARD_TIER_CHANCE[encounterRewardTier(combat)];
+
+  const rewards = [
+    { kind: "pick", label: "Pick a reward", cards: rollPickCards(lootConfig().pickCount || 3), done: false },
+  ];
+  if (Math.random() < chance) {
+    rewards.push({ kind: "random", label: "Random reward", cards: [randomLootCard()], done: false });
+  }
+  if (Math.random() < chance) {
+    rewards.push({ kind: "salvage", label: "Salvage found", cards: [makeCard("valuableSalvage")], done: false });
+  }
+
+  let credits = 0;
+  combat.rewardContext.killedEnemies.forEach((e) => { if (e.creditsOnKill) credits += e.creditsOnKill; });
+
+  return { rewards, credits };
+}
+
+// ----- resolving rewards (LOOT_REWARD screen actions) ----------------------
+
+function openReward(index) {
+  const r = state.pendingRewards[index];
+  if (!r || r.done) return;
+  state.activeRewardIndex = index;
+  render();
+}
+
+// Back out of a decision screen without consuming the reward.
+function closeReward() {
+  state.activeRewardIndex = null;
+  render();
+}
+
+// Take a card from the active reward into the deck (consumes the reward).
+function chooseRewardCard(instanceId) {
+  const r = state.pendingRewards[state.activeRewardIndex];
+  if (!r || r.done) return;
+  const card = r.cards.find((c) => c.instanceId === instanceId);
+  if (!card) return;
+  state.player.deck.push(card);
+  r.done = true;
+  r.taken = card;
+  state.activeRewardIndex = null;
+  render();
+}
+
+// Skip the active reward. Skipping the pick pays 1 credit; the bonus rewards
+// pay nothing.
+function skipReward() {
+  const r = state.pendingRewards[state.activeRewardIndex];
+  if (!r || r.done) return;
+  if (r.kind === "pick") gainCredits(state, 1);
+  r.done = true;
+  r.skipped = true;
+  state.activeRewardIndex = null;
+  render();
 }

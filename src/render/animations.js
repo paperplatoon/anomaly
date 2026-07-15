@@ -270,7 +270,7 @@ function spawnAttackFx(targetEl, fx, amount = 0) {
     case "gun": spawnTracer(targetEl, amount >= 15); break;
     case "aoe": spawnAt(targetEl, "slash-v", 320); break;
     case "explosive": spawnAt(targetEl, "slash-v", 320); spawnAt(targetEl, "burst-ring", 420); break;
-    case "melee": spawnAt(targetEl, "slash-d", 340); break;
+    case "melee": spawnKnifeSlash(targetEl); break;
     default: break;
   }
 }
@@ -310,6 +310,63 @@ function impactFrame() {
 function spawnBuffFx() {
   spawnAt(playerAvatarEl(), "buff-ring", 520);
   flashEl(playerAvatarEl(), "powered", 520);
+}
+
+// Radiation hits the player: expanding hazard ring + a big ☢ that flares up,
+// plus the green tint flash. Used by both the card path and enemy moves.
+function spawnRadPulse(anchor = playerAvatarEl()) {
+  spawnAt(anchor, "rad-pulse", 700);
+  const glyph = spawnAt(anchor, "rad-glyph", 700);
+  if (glyph) glyph.textContent = "☢";
+  flashEl(anchor, "irradiated", 500);
+}
+
+// Auto-Block: a blue gridline diamond pulses out of the player (same visual
+// language as the shield bubble). Fired when Auto-Block is gained AND when it
+// triggers at end of turn.
+function spawnAutoBlockFx() {
+  spawnAt(playerAvatarEl(), "autoblock-pulse", 700);
+}
+
+// Knife slash: a bright arcing swipe + gleam streak across the target —
+// visually distinct from the gun tracer.
+function spawnKnifeSlash(targetEl) {
+  const node = spawnAt(targetEl, "knife-slash", 460);
+  if (node) spawnImpactSparks(targetEl, 4);
+}
+
+// Golden burst: ring + star sparks. Fired when the player claims a reward card.
+function spawnGoldBurst(anchor) {
+  if (!anchor) return;
+  spawnAt(anchor, "gold-burst", 650);
+  for (let i = 0; i < 7; i++) {
+    const spark = spawnAt(anchor, "gold-spark", 620);
+    if (!spark) continue;
+    const ang = Math.random() * Math.PI * 2;
+    const dist = 34 + Math.random() * 40;
+    spark.style.setProperty("--dx", `${Math.cos(ang) * dist}px`);
+    spark.style.setProperty("--dy", `${Math.sin(ang) * dist}px`);
+  }
+}
+
+// Reward-pick flourish: golden burst on the chosen card, then a card ghost
+// flies down into the player's pack. Call BEFORE the state change re-renders.
+function spawnRewardPickFx(cardEl) {
+  if (!cardEl || typeof cardEl.getBoundingClientRect !== "function") return;
+  spawnGoldBurst(cardEl);
+  const from = centerOf(cardEl);
+  const to = { x: window.innerWidth / 2, y: window.innerHeight + 60 }; // into the pack
+  flyCardGhost(from, to, 120);
+}
+
+// Played card zips from its hand position into the discard pile, so the
+// destination is unmistakable. (Skipped for single-use/recharging cards.)
+function flyPlayedCardToDiscard(cid) {
+  if (typeof document === "undefined" || !document.querySelector) return;
+  const el = document.querySelector(`[data-cid="${cid}"]`);
+  const to = pileAnchor("discard");
+  if (!el || !to) return;
+  flyCardGhost(centerOf(el), centerOf(to), 140);
 }
 
 // ----- ghosts / death / banner --------------------------------------------
@@ -389,8 +446,13 @@ async function animateEnemyHit(evt) {
   await pause(300);
   if (el) el.classList.remove("hit-shake");
   if (evt.hpAfter <= 0 && el) {
+    // death: white flash, burst ring, spark shower, then collapse + dissolve
     el.classList.add("enemy-death");
-    await pause(480);
+    const avatar = el.querySelector ? el.querySelector(".enemy-avatar") || el : el;
+    spawnAt(avatar, "death-burst", 750);
+    spawnImpactSparks(avatar, 11);
+    floatText(avatar, "SLAIN", "dmg big");
+    await pause(620);
   }
 }
 
@@ -413,9 +475,9 @@ async function playPlayerCardEvents(events) {
         break;
       case "playerRad":
         floatText(playerAvatarEl(), `+${evt.amount}☢`, "rad");
-        flashEl(playerAvatarEl(), "irradiated", 350);
+        spawnRadPulse();
         setPlayerBars();
-        await pause(220);
+        await pause(420); // let the hazard pulse read
         break;
       case "playerEnergy":
         floatText(energyAnchor(), `+${evt.amount}⚡`, "energy");
@@ -427,7 +489,13 @@ async function playPlayerCardEvents(events) {
         floatText(playerAvatarEl(), `+${evt.amount} ${evt.stat}`, "buff");
         spawnBuffFx();
         setPlayerBars();
-        await pause(280);
+        await pause(340); // beat so the stat gain registers
+        break;
+      case "autoBlock":
+        floatText(playerAvatarEl(), `+${evt.amount} AUTO-BLOCK`, "block");
+        spawnAutoBlockFx();
+        setPlayerBars();
+        await pause(360);
         break;
       case "powerPlayed":
         floatText(playerAvatarEl(), evt.name, "power");

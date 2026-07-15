@@ -63,8 +63,8 @@ const enemyTemplates = {
       { name: "Rage", type: "buff", strength: 3, noConsecutive: true, maxUses: 2 },
     ],
     lootTable: [
-      { templateId: "scrapArmor", chance: 0.5 },
-      { templateId: "shieldEnergizer", chance: 0.4 },
+      { templateId: "hunkerDown", chance: 0.5 },
+      { templateId: "turretWall", chance: 0.4 },
       { templateId: "energyWall", chance: 0.25 },
     ],
   },

@@ -301,19 +301,22 @@ function getEncounterForTile(tile) {
 // ----- loot cache + event ------------------------------------------------
 
 const CACHE_LOOT_POOL = [
-  "lightMutantPelt", "scrapArmor", "antiRadInjection", "quickSwipe", "irradiatedBullet",
-  "buckshot", "shieldEnergizer", "treatedShield", "packSorter", "meditate",
+  "lightMutantPelt", "hunkerDown", "antiRadInjection", "swordplay", "irradiatedBullet",
+  "coverFire", "turretWall", "treatedShield", "packSorter", "meditate",
 ];
 
 function openLootCache(tile) {
-  const n = randInt(2, 3);
   const cards = [];
-  for (let i = 0; i < n; i++) {
-    cards.push(makeCard(CACHE_LOOT_POOL[randInt(0, CACHE_LOOT_POOL.length - 1)]));
+  const seen = new Set();
+  while (cards.length < 3 && seen.size < CACHE_LOOT_POOL.length) {
+    const id = CACHE_LOOT_POOL[randInt(0, CACHE_LOOT_POOL.length - 1)];
+    if (seen.has(id)) continue;
+    seen.add(id);
+    cards.push(makeCard(id));
   }
-  state.pendingLoot = cards;
-  state.pendingLootCredits = 0;
-  state.lootSelected = new Set();
+  state.pendingRewards = [{ kind: "pick", label: "Pick a reward", cards, done: false }];
+  state.pendingRewardCredits = 0;
+  state.activeRewardIndex = null;
   state.status = Status.LOOT_REWARD;
   render();
 }
@@ -341,10 +344,12 @@ function openEvent(tile) {
 
 // ----- returning to the map ----------------------------------------------
 
-// Called by the loot screen's leave buttons and after loot caches.
+// Called by the rewards screen's Continue button (unclaimed rewards are left
+// behind) and by the relic screen.
 function leaveLoot() {
-  state.pendingLoot = [];
-  state.lootSelected = new Set();
+  state.pendingRewards = [];
+  state.activeRewardIndex = null;
+  state.pendingRewardCredits = 0;
   state.pendingArtifact = null;
   if (state.currentTile) {
     state.currentTile.resolved = true;

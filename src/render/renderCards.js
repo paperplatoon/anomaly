@@ -47,6 +47,15 @@ function renderCardTextLine(line) {
   if (/^Recharging\.$/i.test(line)) {
     return el("div", { class: ["card-line", "kw-recharging"], text: "Recharging" });
   }
+  // computed totals like "[24 total]" / "[19]" render bold so the final number pops
+  const total = line.match(/^(.*)(\[[^\]]+\])(.*)$/);
+  if (total) {
+    return el("div", { class: "card-line" }, [
+      total[1],
+      el("span", { class: "calc-total", text: total[2] }),
+      total[3],
+    ]);
+  }
   return el("div", { class: "card-line", text: line });
 }
 

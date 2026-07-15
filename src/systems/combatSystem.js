@@ -224,6 +224,10 @@ async function playCard(cardInstanceId, targetIndex = null) {
 
   animating = true;
   if (typeof spawnCardGhostById === "function") spawnCardGhostById(card.instanceId);
+  // discard-bound cards visibly fly into the discard pile
+  if (typeof flyPlayedCardToDiscard === "function" && !card.consumedOnUse && !card.refills && !card.exhaustsForCombat) {
+    flyPlayedCardToDiscard(card.instanceId);
+  }
   if (typeof removeHandCardEl === "function") removeHandCardEl(card.instanceId);
   if (typeof setPlayerBars === "function") setPlayerBars();
   if (typeof playPlayerCardEvents === "function") await playPlayerCardEvents(events);
@@ -366,6 +370,12 @@ async function endTurn() {
   if (typeof drainAnimQueue === "function") drainAnimQueue();
   render(); // rest snapshot: hand discarded, current intents shown
   if (handPoints && typeof animateDiscardFly === "function") animateDiscardFly(handPoints);
+  // Auto-Block triggering is its own visible beat before the enemy turn
+  if (autoBlk > 0 && typeof spawnAutoBlockFx === "function") {
+    spawnAutoBlockFx();
+    floatText(playerAvatarEl(), `⛨ +${autoBlk}`, "block");
+    await pause(340);
+  }
   await pause(220);
   if (typeof spawnBanner === "function") spawnBanner("ENEMY TURN");
   await pause(340);
@@ -414,7 +424,12 @@ async function animateEnemyMove(s, enemy) {
   } else if (isAttack) {
     spawnShield("BLOCKED", true);
   }
-  if (move.radiation) { floatText(playerEl, `+${move.radiation}☢`, "rad"); flashEl(playerEl, "irradiated", 350); }
+  if (move.radiation || (move.radPerHit && dmg > 0)) {
+    const radShown = move.radiation || move.radPerHit * (move.hits || 1);
+    floatText(playerEl, `+${radShown}☢`, "rad");
+    spawnRadPulse(playerEl);
+    await pause(260); // beat: radiation landing should be unmissable
+  }
   if (move.addsCard) {
     const nm = cardTemplates[move.addsCard.templateId] ? cardTemplates[move.addsCard.templateId].name : "cards";
     floatText(playerEl, `+${move.addsCard.count || 1} ${nm}`, "power");
@@ -489,6 +504,7 @@ function applyPostCombatRelics(s) {
 
 function endCombat(s, result) {
   animating = false;
+  s.player.energy = 0; // energy only exists inside combat (card previews read it)
   if (result === "victory") {
     const wasBoss = s.currentCombat.isBoss;
     const wasLandmark = s.currentCombat.isLandmark;
@@ -500,7 +516,7 @@ function endCombat(s, result) {
     applyPostCombatRelics(s);
     if (typeof fireArtifacts === "function") fireArtifacts("onCombatEnd", s);
 
-    const loot = generateCombatLoot(s);
+    const loot = generateCombatRewards(s);
     s.player.credits += loot.credits;
 
     // Relic sources: landmark bosses guarantee one; plain elites drop one 15% of
@@ -528,9 +544,9 @@ function endCombat(s, result) {
       return;
     }
 
-    s.pendingLoot = loot.cards;
-    s.pendingLootCredits = loot.credits;
-    s.lootSelected = new Set();
+    s.pendingRewards = loot.rewards;
+    s.pendingRewardCredits = loot.credits;
+    s.activeRewardIndex = null;
     s.status = Status.LOOT_REWARD;
   } else {
     s.status = Status.DEATH;

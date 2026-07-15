@@ -49,8 +49,8 @@ const cardTemplates = {
   },
 
   // ================= COMMON =================
-  energyRound: {
-    templateId: "energyRound", name: "Energy Round", type: "attack", tags: ["shoot", "loot", "radiation"], rarity: "common",
+  radioactiveRound: {
+    templateId: "radioactiveRound", name: "Radioactive Round", type: "attack", tags: ["shoot", "loot", "radiation"], rarity: "common",
     baseCost: 1, baseDamage: 14, baseRad: 1, refills: true, target: "enemy",
     text: (s, c) => `Deal ${dmgOf(s, c)} damage. Gain ${c.rad} Radiation.${cardExtras(c)}`,
     action: (s, c, t) => { dealDamage(s, t, dmgBase(c), { card: c }); gainRadiation(s, c.rad); },
@@ -79,17 +79,17 @@ const cardTemplates = {
     text: (s, c) => `Gain ${blkOf(s, c)} Block.`,
     action: (s, c) => gainBlock(s, blkBase(c), { card: c }),
   },
-  scrapArmor: {
-    templateId: "scrapArmor", name: "Scrap Armor", type: "skill", tags: ["shield", "technique", "draw"], rarity: "common",
-    baseCost: 1, baseBlock: 7, baseDraw: 1, target: "none",
-    text: (s, c) => `Gain ${blkOf(s, c)} Block.${drawSuffix(s, c)}`,
-    action: (s, c) => gainBlock(s, blkBase(c), { card: c }),
+  hunkerDown: {
+    templateId: "hunkerDown", name: "Hunker Down", type: "skill", tags: ["shield", "technique", "draw"], rarity: "common",
+    baseCost: 1, baseBlock: 4, baseDraw: 1, buff: 1, target: "none",
+    text: (s, c) => `Gain ${blkOf(s, c)} Block. Shoot cards deal +${c.buff} this combat.${drawSuffix(s, c)}`,
+    action: (s, c) => { gainBlock(s, blkBase(c), { card: c }); applyCombatMod(s, "shootDamage", c.buff, "Shoot"); },
   },
   takeCover: {
     templateId: "takeCover", name: "Take Cover", type: "skill", tags: ["shield", "technique"], rarity: "common",
-    baseCost: 1, baseBlock: 4, baseBlockTimes: 2, target: "none",
-    text: (s, c) => `Gain ${blkOf(s, c)} Block${blockTimesSuffix(s, c)}.`,
-    action: (s, c) => gainBlockHits(s, blkBase(c), c),
+    baseCost: 1, baseBlock: 4, maxHpGain: 1, refills: true, target: "none",
+    text: (s, c) => `Gain ${blkOf(s, c)} Block. Gain ${c.maxHpGain} Max HP.${cardExtras(c)}`,
+    action: (s, c) => { gainBlock(s, blkBase(c), { card: c }); s.player.maxHp += c.maxHpGain; s.player.hp += c.maxHpGain; },
   },
   treatedShield: {
     templateId: "treatedShield", name: "Treated Shield", type: "skill", tags: ["shield", "technique", "radiation"], rarity: "common",
@@ -115,12 +115,6 @@ const cardTemplates = {
     text: (s, c) => `Gain ${blkOf(s, c)} Block. Gain ${c.rad} Radiation.`,
     action: (s, c) => { gainBlock(s, blkBase(c), { card: c }); gainRadiation(s, c.rad); },
   },
-  shieldEnergizer: {
-    templateId: "shieldEnergizer", name: "Shield Energizer", type: "skill", tags: ["shield", "loot", "radiation"], rarity: "common",
-    baseCost: 1, baseBlock: 12, baseRad: 1, refills: true, target: "none",
-    text: (s, c) => `Gain ${blkOf(s, c)} Block. Gain ${c.rad} Radiation.${cardExtras(c)}`,
-    action: (s, c) => { gainBlock(s, blkBase(c), { card: c }); gainRadiation(s, c.rad); },
-  },
   energyWall: {
     templateId: "energyWall", name: "Energy Wall", type: "skill", tags: ["shield", "loot", "radiation"], rarity: "common",
     baseCost: 2, baseBlock: 21, baseRad: 1, refills: true, target: "none",
@@ -129,7 +123,7 @@ const cardTemplates = {
   },
   spikedShield: {
     templateId: "spikedShield", name: "Spiked Shield", type: "skill", tags: ["shield", "loot", "aoe", "radiation"], rarity: "common",
-    baseCost: 1, baseBlock: 8, spikeDamage: 5, baseRad: 1, target: "none",
+    baseCost: 1, baseBlock: 10, spikeDamage: 5, baseRad: 1, target: "none",
     text: (s, c) => `Gain ${blkOf(s, c)} Block. Deal ${atk(s, c.spikeDamage)} to ALL enemies. Gain ${c.rad} Radiation.`,
     action: (s, c) => { gainBlock(s, blkBase(c), { card: c }); dealDamageAll(s, c.spikeDamage); gainRadiation(s, c.rad); },
   },
@@ -148,21 +142,21 @@ const cardTemplates = {
     text: (s, c) => `Deal ${dmgOf(s, c)} damage. Remove ${-c.rad} Radiation.`,
     action: (s, c, t) => { dealDamage(s, t, dmgBase(c), { card: c }); gainRadiation(s, c.rad); },
   },
-  buckshot: {
-    templateId: "buckshot", name: "Buckshot", type: "attack", tags: ["shoot", "technique", "aoe"], rarity: "common",
-    baseCost: 1, baseDamage: 9, target: "none",
-    text: (s, c) => `Deal ${dmgOf(s, c)} damage to ALL enemies.`,
-    action: (s, c) => dealDamageAll(s, dmgBase(c), { card: c }),
+  coverFire: {
+    templateId: "coverFire", name: "Cover Fire", type: "attack", tags: ["shoot", "technique", "aoe"], rarity: "common",
+    baseCost: 1, baseDamage: 5, buff: 1, target: "none",
+    text: (s, c) => `Deal ${dmgOf(s, c)} damage to ALL enemies. Shield cards gain +${c.buff} Block this combat.`,
+    action: (s, c) => { dealDamageAll(s, dmgBase(c), { card: c }); applyCombatMod(s, "shieldBlock", c.buff, "Shield"); },
   },
   treatedHeavyShot: {
     templateId: "treatedHeavyShot", name: "Treated Heavy Shot", type: "attack", tags: ["shoot", "technique", "radiation"], rarity: "common",
-    baseCost: 2, baseDamage: 12, baseRad: -2, target: "enemy",
+    baseCost: 2, baseDamage: 12, baseRad: -1, target: "enemy",
     text: (s, c) => `Deal ${dmgOf(s, c)} damage. Remove ${-c.rad} Radiation.`,
     action: (s, c, t) => { dealDamage(s, t, dmgBase(c), { card: c }); gainRadiation(s, c.rad); },
   },
   suppressingFire: {
     templateId: "suppressingFire", name: "Suppressing Fire", type: "attack", tags: ["shoot", "technique", "aoe"], rarity: "common",
-    baseCost: 2, baseDamage: 10, baseBlock: 4, target: "none",
+    baseCost: 2, baseDamage: 10, baseBlock: 6, target: "none",
     text: (s, c) => `Deal ${dmgOf(s, c)} damage to ALL enemies. Gain ${blkOf(s, c)} Block.`,
     action: (s, c) => { dealDamageAll(s, dmgBase(c), { card: c }); gainBlock(s, blkBase(c)); },
   },
@@ -180,19 +174,19 @@ const cardTemplates = {
   },
   irradiatedMagazine: {
     templateId: "irradiatedMagazine", name: "Irradiated Magazine", type: "attack", tags: ["shoot", "loot", "radiation"], rarity: "common",
-    baseCost: 2, baseDamage: 23, baseRad: 2, target: "enemy",
+    baseCost: 2, baseDamage: 23, baseRad: 1, target: "enemy",
     text: (s, c) => `Deal ${dmgOf(s, c)} damage. Gain ${c.rad} Radiation.`,
     action: (s, c, t) => { dealDamage(s, t, dmgBase(c), { card: c }); gainRadiation(s, c.rad); },
   },
-  quickSwipe: {
-    templateId: "quickSwipe", name: "Quick Swipe", type: "attack", tags: ["knife", "technique"], rarity: "common",
-    baseCost: 0, baseDamage: 7, target: "enemy",
-    text: (s, c) => `Deal ${dmgOf(s, c)} damage.`,
-    action: (s, c, t) => dealDamage(s, t, dmgBase(c), { card: c }),
+  swordplay: {
+    templateId: "swordplay", name: "Swordplay", type: "attack", tags: ["knife", "technique"], rarity: "common",
+    baseCost: 1, baseDamage: 7, buff: 1, target: "enemy",
+    text: (s, c) => `Deal ${dmgOf(s, c)} damage. Knife cards deal +${c.buff} this combat.`,
+    action: (s, c, t) => { dealDamage(s, t, dmgBase(c), { card: c }); applyCombatMod(s, "knifeDamage", c.buff, "Knife"); },
   },
   crackedFang: {
     templateId: "crackedFang", name: "Cracked Fang", type: "attack", tags: ["knife", "loot", "beast", "radiation"], rarity: "common",
-    baseCost: 1, baseDamage: 14, baseRad: 1, target: "enemy",
+    baseCost: 1, baseDamage: 16, baseRad: 1, target: "enemy",
     text: (s, c) => `Deal ${dmgOf(s, c)} damage. Gain ${c.rad} Radiation.`,
     action: (s, c, t) => { dealDamage(s, t, dmgBase(c), { card: c }); gainRadiation(s, c.rad); },
   },
@@ -216,7 +210,7 @@ const cardTemplates = {
   },
   disablingStrike: {
     templateId: "disablingStrike", name: "Disabling Strike", type: "attack", tags: ["knife", "technique", "debuff"], rarity: "common",
-    baseCost: 0, baseDamage: 5, weaken: 3, refills: true, target: "enemy",
+    baseCost: 1, baseDamage: 7, weaken: 1, refills: true, target: "enemy",
     text: (s, c) => `Deal ${dmgOf(s, c)} damage. Target deals ${c.weaken} less damage this combat.${cardExtras(c)}`,
     action: (s, c, t) => { dealDamage(s, t, dmgBase(c), { card: c }); if (t) t.strength -= c.weaken; },
   },
@@ -224,15 +218,15 @@ const cardTemplates = {
   // ================= UNCOMMON =================
   trackerBullets: {
     templateId: "trackerBullets", name: "Tracker Bullets", type: "attack", tags: ["shoot", "loot", "scaling", "radiation"], rarity: "uncommon",
-    baseCost: 1, baseDamage: 10, scaleDamage: 6, baseRad: 1, target: "enemy",
+    baseCost: 1, baseDamage: 12, scaleDamage: 6, baseRad: 1, target: "enemy",
     text: (s, c) => `Deal ${dmgOf(s, c)} damage. Increase this card's damage by ${c.scaleDamage} this combat. Gain ${c.rad} Radiation.`,
     action: (s, c, t) => { dealDamage(s, t, dmgBase(c), { card: c }); c.combatDamage += c.scaleDamage; gainRadiation(s, c.rad); },
   },
   heavyBuckshot: {
     templateId: "heavyBuckshot", name: "Heavy Buckshot", type: "attack", tags: ["shoot", "technique", "aoe"], rarity: "uncommon",
-    baseCost: 2, baseDamage: 15, target: "none",
-    text: (s, c) => `Deal ${dmgOf(s, c)} damage to ALL enemies.`,
-    action: (s, c) => dealDamageAll(s, dmgBase(c), { card: c }),
+    baseCost: 2, baseDamage: 14, buff: 1, target: "none",
+    text: (s, c) => `Deal ${dmgOf(s, c)} damage to ALL enemies. Shield cards gain +${c.buff} Block this combat.`,
+    action: (s, c) => { dealDamageAll(s, dmgBase(c), { card: c }); applyCombatMod(s, "shieldBlock", c.buff, "Shield"); },
   },
   burstFire: {
     templateId: "burstFire", name: "Burst Fire", type: "attack", tags: ["shoot", "technique", "multihit"], rarity: "uncommon",
@@ -243,12 +237,12 @@ const cardTemplates = {
   chargedShot: {
     templateId: "chargedShot", name: "Charged Shot", type: "attack", tags: ["shoot", "technique", "energy"], rarity: "uncommon",
     baseCost: 0, costDisplay: "X", baseDamage: 8, target: "enemy",
-    text: (s, c) => `Spend all Energy. Deal ${dmgOf(s, c)} damage once per Energy spent (${s.player.energy} now).`,
+    text: (s, c) => `Spend all Energy. Deal ${dmgOf(s, c)} damage once per Energy spent [${dmgOf(s, c) * s.player.energy} total].`,
     action: (s, c, t) => { const e = s.player.energy; s.player.energy = 0; for (let i = 0; i < e; i++) dealDamage(s, t, dmgBase(c), { card: c }); },
   },
   treatedBullets: {
     templateId: "treatedBullets", name: "Treated Bullets", type: "attack", tags: ["shoot", "technique", "radiation"], rarity: "uncommon",
-    baseCost: 2, baseDamage: 16, baseRad: -2, target: "enemy",
+    baseCost: 2, baseDamage: 16, baseRad: -1, target: "enemy",
     text: (s, c) => `Deal ${dmgOf(s, c)} damage. Remove ${-c.rad} Radiation.`,
     action: (s, c, t) => { dealDamage(s, t, dmgBase(c), { card: c }); gainRadiation(s, c.rad); },
   },
@@ -271,7 +265,7 @@ const cardTemplates = {
   goldenGun: {
     templateId: "goldenGun", name: "Golden Gun", type: "attack", tags: ["shoot", "loot", "economy", "radiation"], rarity: "uncommon",
     baseCost: 1, baseDamage: 9, per: 1, baseRad: 1, target: "enemy",
-    text: (s, c) => `Deal ${atk(s, dmgBase(c) + Math.floor(s.player.credits / c.per), c)} damage (${c.damage} + 1 per gold). Gain ${c.rad} Radiation.`,
+    text: (s, c) => `Deal ${c.damage} damage +1 per gold [${atk(s, dmgBase(c) + Math.floor(s.player.credits / c.per), c)}]. Gain ${c.rad} Radiation.`,
     action: (s, c, t) => { dealDamage(s, t, dmgBase(c) + Math.floor(s.player.credits / c.per), { card: c }); gainRadiation(s, c.rad); },
   },
   scrapCannon: {
@@ -297,12 +291,12 @@ const cardTemplates = {
     templateId: "gunHoloshield", name: "Gun Holoshield", type: "attack", tags: ["shoot", "loot", "radiation"], rarity: "uncommon",
     baseCost: 1, baseDamage: 9, autoBlockGain: 2, baseRad: 1, target: "enemy",
     text: (s, c) => `Deal ${dmgOf(s, c)} damage. Gain ${c.autoBlockGain} Auto-Block. Gain ${c.rad} Radiation.`,
-    action: (s, c, t) => { dealDamage(s, t, dmgBase(c), { card: c }); s.currentCombat.mods.autoBlock += c.autoBlockGain; gainRadiation(s, c.rad); },
+    action: (s, c, t) => { dealDamage(s, t, dmgBase(c), { card: c }); applyCombatMod(s, "autoBlock", c.autoBlockGain); gainRadiation(s, c.rad); },
   },
   pressurize: {
     templateId: "pressurize", name: "Pressurize", type: "skill", tags: ["item", "technique", "block", "energy"], rarity: "uncommon",
     baseCost: 0, costDisplay: "X", perEnergyBlock: 8, target: "none",
-    text: (s, c) => `Spend all Energy. Gain ${c.perEnergyBlock} Block per Energy spent (${s.player.energy} now).`,
+    text: (s, c) => `Spend all Energy. Gain ${blk(s, c.perEnergyBlock)} Block per Energy spent [${blk(s, c.perEnergyBlock) * s.player.energy} total].`,
     action: (s, c) => { const e = s.player.energy; s.player.energy = 0; for (let i = 0; i < e; i++) gainBlock(s, c.perEnergyBlock); },
   },
   meditate: {
@@ -314,18 +308,18 @@ const cardTemplates = {
   heavyPack: {
     templateId: "heavyPack", name: "Heavy Pack", type: "skill", tags: ["shield", "technique", "big-deck"], rarity: "uncommon",
     baseCost: 2, target: "none",
-    text: (s, c) => `Gain ${blk(s, s.player.deck.length, c)} Block (equal to pack size).`,
+    text: (s, c) => `Gain Block equal to your pack size [${blk(s, s.player.deck.length, c)}].`,
     action: (s, c) => gainBlock(s, s.player.deck.length, { card: c }),
   },
   thickSkin: {
     templateId: "thickSkin", name: "Thick Skin", type: "skill", tags: ["shield", "technique", "radiation"], rarity: "uncommon",
     baseCost: 1, baseBlock: 8, target: "none",
-    text: (s, c) => `Gain ${blk(s, blkBase(c) + s.player.radiation, c)} Block (${c.block} + Radiation).`,
+    text: (s, c) => `Gain ${c.block} Block +1 per Radiation [${blk(s, blkBase(c) + s.player.radiation, c)}].`,
     action: (s, c) => gainBlock(s, blkBase(c) + s.player.radiation, { card: c }),
   },
   shieldBash: {
     templateId: "shieldBash", name: "Shield Bash", type: "skill", tags: ["shield", "technique", "aoe"], rarity: "uncommon",
-    baseCost: 2, baseBlock: 14, spikeDamage: 6, target: "none",
+    baseCost: 2, baseBlock: 15, spikeDamage: 7, target: "none",
     text: (s, c) => `Gain ${blkOf(s, c)} Block. Deal ${atk(s, c.spikeDamage)} to ALL enemies.`,
     action: (s, c) => { gainBlock(s, blkBase(c), { card: c }); dealDamageAll(s, c.spikeDamage); },
   },
@@ -336,28 +330,34 @@ const cardTemplates = {
     action: (s, c) => { gainBlock(s, blkBase(c), { card: c }); if (c.playCountThisCombat >= 3) dealDamageAll(s, c.bigDamage); },
   },
   learningShield: {
-    templateId: "learningShield", name: "Learning Shield", type: "skill", tags: ["shield", "loot", "scaling", "radiation"], rarity: "uncommon",
-    baseCost: 1, baseBlock: 10, scaleBlock: 5, baseRad: 1, target: "none",
+    templateId: "learningShield", name: "Learning Shield", type: "skill", tags: ["shield", "loot", "scaling", "radiation"], rarity: "common",
+    baseCost: 1, baseBlock: 11, scaleBlock: 5, baseRad: 1, target: "none",
     text: (s, c) => `Gain ${blkOf(s, c)} Block. Gain ${c.scaleBlock} more Block this combat when played. Gain ${c.rad} Radiation.`,
     action: (s, c) => { gainBlock(s, blkBase(c), { card: c }); c.combatBlock += c.scaleBlock; gainRadiation(s, c.rad); },
   },
-  learningBarrier: {
-    templateId: "learningBarrier", name: "Learning Barrier", type: "skill", tags: ["shield", "loot", "scaling", "radiation"], rarity: "uncommon",
-    baseCost: 2, baseBlock: 16, scaleBlock: 6, baseRad: 1, target: "none",
-    text: (s, c) => `Gain ${blkOf(s, c)} Block. Gain ${c.scaleBlock} more Block this combat when played. Gain ${c.rad} Radiation.`,
-    action: (s, c) => { gainBlock(s, blkBase(c), { card: c }); c.combatBlock += c.scaleBlock; gainRadiation(s, c.rad); },
+  wayOfTheShield: {
+    templateId: "wayOfTheShield", name: "Way of the Shield", type: "skill", tags: ["shield", "loot", "radiation"], rarity: "uncommon",
+    baseCost: 1, baseBlock: 6, buff: 1, baseRad: 1, target: "none",
+    text: (s, c) => `Gain ${blkOf(s, c)} Block. Shield cards gain +${c.buff} Block this combat. Gain ${c.rad} Radiation.`,
+    action: (s, c) => { gainBlock(s, blkBase(c), { card: c }); applyCombatMod(s, "shieldBlock", c.buff, "Shield"); gainRadiation(s, c.rad); },
+  },
+  turretWall: {
+    templateId: "turretWall", name: "Turret Wall", type: "skill", tags: ["shield", "loot", "radiation"], rarity: "uncommon",
+    baseCost: 2, baseBlock: 14, buff: 2, baseRad: 1, refills: true, target: "none",
+    text: (s, c) => `Gain ${blkOf(s, c)} Block. Shoot cards deal +${c.buff} this combat. Gain ${c.rad} Radiation.${cardExtras(c)}`,
+    action: (s, c) => { gainBlock(s, blkBase(c), { card: c }); applyCombatMod(s, "shootDamage", c.buff, "Shoot"); gainRadiation(s, c.rad); },
   },
   autoBlocker: {
     templateId: "autoBlocker", name: "Auto-Blocker", type: "skill", tags: ["shield", "loot", "radiation"], rarity: "uncommon",
-    baseCost: 1, autoBlockGain: 4, baseRad: 1, target: "none",
+    baseCost: 1, autoBlockGain: 3, baseRad: 1, target: "none",
     text: (s, c) => `Gain ${c.autoBlockGain} Auto-Block. Gain ${c.rad} Radiation.`,
-    action: (s, c) => { s.currentCombat.mods.autoBlock += c.autoBlockGain; gainRadiation(s, c.rad); },
+    action: (s, c) => { applyCombatMod(s, "autoBlock", c.autoBlockGain); gainRadiation(s, c.rad); },
   },
   largeAutoBlocker: {
     templateId: "largeAutoBlocker", name: "Large Auto-Blocker", type: "skill", tags: ["shield", "loot", "radiation"], rarity: "uncommon",
-    baseCost: 2, autoBlockGain: 6, baseRad: 1, target: "none",
+    baseCost: 2, autoBlockGain: 5, baseRad: 1, target: "none",
     text: (s, c) => `Gain ${c.autoBlockGain} Auto-Block. Gain ${c.rad} Radiation.`,
-    action: (s, c) => { s.currentCombat.mods.autoBlock += c.autoBlockGain; gainRadiation(s, c.rad); },
+    action: (s, c) => { applyCombatMod(s, "autoBlock", c.autoBlockGain); gainRadiation(s, c.rad); },
   },
   rustedExplosive: {
     templateId: "rustedExplosive", name: "Rusted Explosive", type: "attack", tags: ["item", "loot", "aoe"], rarity: "uncommon",
@@ -383,7 +383,7 @@ const cardTemplates = {
   dirtyBomb: {
     templateId: "dirtyBomb", name: "Dirty Bomb", type: "attack", tags: ["item", "loot", "aoe", "radiation"], rarity: "uncommon",
     baseCost: 0, baseRad: 2, target: "none",
-    text: (s, c) => `Gain ${c.rad} Radiation. Deal Radiation damage to ALL enemies (${atk(s, s.player.radiation)}).`,
+    text: (s, c) => `Gain ${c.rad} Radiation. Deal your Radiation to ALL enemies [${atk(s, Math.min(RAD_MAX, s.player.radiation + c.rad))}].`,
     action: (s, c) => { gainRadiation(s, c.rad); dealDamageAll(s, s.player.radiation); },
   },
   contractKiller: {
@@ -395,24 +395,24 @@ const cardTemplates = {
   packSlam: {
     templateId: "packSlam", name: "Pack Slam", type: "attack", tags: ["item", "technique", "big-deck"], rarity: "uncommon",
     baseCost: 2, target: "enemy",
-    text: (s, c) => `Deal ${atk(s, s.player.deck.length, c)} damage (equal to pack size).`,
+    text: (s, c) => `Deal damage equal to your pack size [${atk(s, s.player.deck.length, c)}].`,
     action: (s, c, t) => dealDamage(s, t, s.player.deck.length, { card: c }),
   },
   spinningSlash: {
     templateId: "spinningSlash", name: "Spinning Slash", type: "attack", tags: ["knife", "technique", "aoe"], rarity: "uncommon",
-    baseCost: 1, baseDamage: 11, target: "none",
-    text: (s, c) => `Deal ${dmgOf(s, c)} damage to ALL enemies.`,
-    action: (s, c) => dealDamageAll(s, dmgBase(c), { card: c }),
+    baseCost: 1, baseDamage: 11, buff: 4, target: "none",
+    text: (s, c) => `Deal ${dmgOf(s, c)} damage to ALL enemies. Knife cards deal +${c.buff} this combat.`,
+    action: (s, c) => { dealDamageAll(s, dmgBase(c), { card: c }); applyCombatMod(s, "knifeDamage", c.buff, "Knife"); },
   },
   goldenKnife: {
     templateId: "goldenKnife", name: "Golden Knife", type: "attack", tags: ["knife", "loot", "economy", "radiation"], rarity: "uncommon",
     baseCost: 1, baseDamage: 8, per: 1, baseRad: 1, target: "enemy",
-    text: (s, c) => `Deal ${atk(s, dmgBase(c) + Math.floor(s.player.credits / c.per), c)} damage (+1 per gold). Gain ${c.rad} Radiation.`,
+    text: (s, c) => `Deal ${c.damage} damage +1 per gold [${atk(s, dmgBase(c) + Math.floor(s.player.credits / c.per), c)}]. Gain ${c.rad} Radiation.`,
     action: (s, c, t) => { dealDamage(s, t, dmgBase(c) + Math.floor(s.player.credits / c.per), { card: c }); gainRadiation(s, c.rad); },
   },
   limbRemover: {
     templateId: "limbRemover", name: "Limb Remover", type: "attack", tags: ["knife", "loot", "debuff", "radiation"], rarity: "uncommon",
-    baseCost: 1, baseDamage: 6, weaken: 3, baseRad: 1, target: "enemy",
+    baseCost: 1, baseDamage: 6, weaken: 1, baseRad: 1, target: "enemy",
     text: (s, c) => `Deal ${dmgOf(s, c)} damage. Target deals ${c.weaken} less damage this combat. Gain ${c.rad} Radiation.`,
     action: (s, c, t) => { dealDamage(s, t, dmgBase(c), { card: c }); if (t) t.strength -= c.weaken; gainRadiation(s, c.rad); },
   },
@@ -426,9 +426,9 @@ const cardTemplates = {
   // ================= RARE (all loot) =================
   largeGunHoloshield: {
     templateId: "largeGunHoloshield", name: "Large Gun Holoshield", type: "attack", tags: ["shoot", "loot", "radiation"], rarity: "rare",
-    baseCost: 2, baseDamage: 15, autoBlockGain: 3, baseRad: 2, target: "enemy",
+    baseCost: 2, baseDamage: 12, autoBlockGain: 3, baseRad: 2, target: "enemy",
     text: (s, c) => `Deal ${dmgOf(s, c)} damage. Gain ${c.autoBlockGain} Auto-Block. Gain ${c.rad} Radiation.`,
-    action: (s, c, t) => { dealDamage(s, t, dmgBase(c), { card: c }); s.currentCombat.mods.autoBlock += c.autoBlockGain; gainRadiation(s, c.rad); },
+    action: (s, c, t) => { dealDamage(s, t, dmgBase(c), { card: c }); applyCombatMod(s, "autoBlock", c.autoBlockGain); gainRadiation(s, c.rad); },
   },
   aimedShot: {
     templateId: "aimedShot", name: "Aimed Shot", type: "attack", tags: ["shoot", "loot", "scaling", "radiation"], rarity: "rare",
@@ -445,7 +445,7 @@ const cardTemplates = {
   gravityGun: {
     templateId: "gravityGun", name: "Gravity Gun", type: "attack", tags: ["shoot", "loot", "loot-payoff", "radiation"], rarity: "rare",
     baseCost: 2, per: 4, baseRad: 2, target: "enemy",
-    text: (s, c) => `Deal ${atk(s, c.per * lootInDeck(s), c)} damage (${c.per} per Loot card in deck). Gain ${c.rad} Radiation.`,
+    text: (s, c) => `Deal ${c.per} damage per Loot card in your deck [${atk(s, c.per * lootInDeck(s), c)}]. Gain ${c.rad} Radiation.`,
     action: (s, c, t) => { dealDamage(s, t, c.per * lootInDeck(s), { card: c }); gainRadiation(s, c.rad); },
   },
   amplifiedEnergyShot: {
@@ -494,7 +494,7 @@ const cardTemplates = {
     templateId: "autoBlockPrototype", name: "AutoBlock Prototype", type: "skill", tags: ["shield", "loot", "consumable", "radiation"], rarity: "rare",
     baseCost: 2, autoBlockGain: 10, baseRad: 3, consumedOnUse: true, target: "none",
     text: (s, c) => `Gain ${c.autoBlockGain} Auto-Block. Gain ${c.rad} Radiation.${cardExtras(c)}`,
-    action: (s, c) => { s.currentCombat.mods.autoBlock += c.autoBlockGain; gainRadiation(s, c.rad); },
+    action: (s, c) => { applyCombatMod(s, "autoBlock", c.autoBlockGain); gainRadiation(s, c.rad); },
   },
   plantPurifier: {
     templateId: "plantPurifier", name: "Plant Purifier", type: "skill", tags: ["shield", "loot", "consumable", "radiation"], rarity: "rare",
@@ -512,24 +512,24 @@ const cardTemplates = {
     templateId: "aimStims", name: "Aim Stims", type: "skill", tags: ["item", "loot", "radiation", "equipment"], rarity: "rare",
     baseCost: 1, baseRad: 2, buff: 4, target: "none",
     text: (s, c) => `Shoot cards deal +${c.buff} this combat. Gain ${c.rad} Radiation.`,
-    action: (s, c) => { s.currentCombat.mods.shootDamage += c.buff; gainRadiation(s, c.rad); },
+    action: (s, c) => { applyCombatMod(s, "shootDamage", c.buff, "Shoot"); gainRadiation(s, c.rad); },
   },
   combatStims: {
     templateId: "combatStims", name: "Combat Stims", type: "skill", tags: ["item", "loot", "radiation", "equipment"], rarity: "rare",
     baseCost: 1, baseRad: 2, buff: 6, target: "none",
     text: (s, c) => `Knife cards deal +${c.buff} this combat. Gain ${c.rad} Radiation.`,
-    action: (s, c) => { s.currentCombat.mods.knifeDamage += c.buff; gainRadiation(s, c.rad); },
+    action: (s, c) => { applyCombatMod(s, "knifeDamage", c.buff, "Knife"); gainRadiation(s, c.rad); },
   },
   skinStims: {
     templateId: "skinStims", name: "Skin Stims", type: "skill", tags: ["item", "loot", "radiation", "equipment"], rarity: "rare",
     baseCost: 1, baseRad: 2, buff: 3, target: "none",
     text: (s, c) => `Shield cards gain +${c.buff} Block this combat. Gain ${c.rad} Radiation.`,
-    action: (s, c) => { s.currentCombat.mods.shieldBlock += c.buff; gainRadiation(s, c.rad); },
+    action: (s, c) => { applyCombatMod(s, "shieldBlock", c.buff, "Shield"); gainRadiation(s, c.rad); },
   },
   reactorVent: {
     templateId: "reactorVent", name: "Reactor Vent", type: "attack", tags: ["item", "loot", "aoe", "radiation"], rarity: "rare",
     baseCost: 1, drain: 5, refills: true, target: "none",
-    text: (s, c) => `Remove up to ${c.drain} Radiation. Deal that much to ALL enemies (${atk(s, Math.min(c.drain, s.player.radiation))}).${cardExtras(c)}`,
+    text: (s, c) => `Remove up to ${c.drain} Radiation. Deal that much to ALL enemies [${atk(s, Math.min(c.drain, s.player.radiation))}].${cardExtras(c)}`,
     action: (s, c) => { const r = Math.min(c.drain, s.player.radiation); gainRadiation(s, -r); dealDamageAll(s, r, { card: c }); },
   },
   healingTech: {
@@ -561,6 +561,17 @@ const cardTemplates = {
     baseCost: 1, baseRad: 2, perm: 3, consumedOnUse: true, target: "none",
     text: (s, c) => `Permanently increase Knife damage by ${c.perm}. Gain ${c.rad} Radiation.${cardExtras(c)}`,
     action: (s, c) => { s.player.knifeBonus += c.perm; gainRadiation(s, c.rad); },
+  },
+
+  // ================= REWARD-ONLY =================
+  // Dropped by the post-combat "Salvage found" reward (never in loot rolls or
+  // trader stock — rarity "special" keeps it out of both pools). A money card:
+  // cycles itself in combat, sells big at a trader.
+  valuableSalvage: {
+    templateId: "valuableSalvage", name: "Valuable Salvage", type: "skill", tags: ["item", "loot", "salvage", "draw"], rarity: "special",
+    baseCost: 1, baseDraw: 1, sellValue: 10, canSell: true, target: "none",
+    text: (s, c) => `${drawSuffix(s, c).trim()} Sells for ${c.sellValue} gold.`,
+    action: () => {},
   },
 
   // ================= ENEMY-INFLICTED (added to your deck; use leaf art) =========
@@ -659,12 +670,13 @@ function upgradeCard(card) {
 
 // Starting deck (teaches radiation risk + single-use + loot vs technique):
 // 5 Basic Shot, 5 Basic Shield, 1 Anti-Rad Injection (single-use), and 1
-// Energy Round (the player just happens to start with one piece of loot).
+// Radioactive Round (the player just happens to start with one piece of loot).
 function buildStartingDeck() {
   const deck = [];
   for (let i = 0; i < 5; i++) deck.push(makeCard("shoot"));
   for (let i = 0; i < 5; i++) deck.push(makeCard("basicShield"));
+  deck.push(makeCard("stab"));
   deck.push(makeCard("antiRadInjection"));
-  deck.push(makeCard("energyRound"));
+  deck.push(makeCard("radioactiveRound"));
   return deck;
 }

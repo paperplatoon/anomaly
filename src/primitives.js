@@ -262,6 +262,19 @@ function gainEnergy(s, n) {
   if (typeof queueAnim === "function" && n > 0) queueAnim({ kind: "playerEnergy", amount: n });
 }
 
+// Raise a per-combat mod (Shoot/Knife/Shield buffs, Auto-Block) AND queue its
+// animation, so every stat gain in a fight visibly pulses on the player.
+// Cards call this instead of poking currentCombat.mods directly.
+function applyCombatMod(s, key, amount, label) {
+  const m = s.currentCombat && s.currentCombat.mods;
+  if (!m) return;
+  m[key] = (m[key] || 0) + amount;
+  if (typeof queueAnim === "function" && amount > 0) {
+    if (key === "autoBlock") queueAnim({ kind: "autoBlock", amount });
+    else queueAnim({ kind: "playerBuff", stat: label || key, amount });
+  }
+}
+
 function gainRadiation(s, n) {
   // Radiation Suit relic reduces positive gains (never turns a gain into a loss).
   if (n > 0 && s.player.radReduction > 0) n = Math.max(0, n - s.player.radReduction);

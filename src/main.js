@@ -11,10 +11,13 @@ const ZONE = {
   height: 8,
 };
 
-// Post-combat loot. `dropsPerFight` random cards drop after each fight (doubled
-// by the Artifact Scanner). `rarityWeight` controls how often each rarity shows.
+// Post-combat rewards. `pickCount` = cards offered on the "Pick a reward"
+// screen (take 1 or skip for a credit). `rarityWeight` controls how often each
+// rarity shows in reward rolls. Bonus-reward odds (random card / Valuable
+// Salvage) live in REWARD_TIER_CHANCE in rewardSystem.js (easy 1/5, medium 1/3,
+// elite+boss guaranteed).
 const LOOT_CONFIG = {
-  dropsPerFight: 3,
+  pickCount: 3,
   rarityWeight: { common: 6, uncommon: 3, rare: 1 },
 };
 

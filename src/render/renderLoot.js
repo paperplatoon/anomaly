@@ -1,71 +1,111 @@
 // ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-// Post-combat loot reward screen. Click drops to toggle selection, then take.
+// Post-combat REWARDS screen. Lists up to three rewards ("Pick a reward" /
+// "Random reward" / "Salvage found"); clicking one opens its decision panel:
+//   pick    — 3 cards, click one to add it to the deck, or Skip (+1 credit)
+//   random  — 1 random card, Take or Skip (no credit)
+//   salvage — 1 Valuable Salvage, Take or Skip (no credit)
+// Continue leaves any unclaimed rewards behind. (Also hosts the relic screen.)
 // ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 
-function toggleLoot(instanceId) {
-  const sel = state.lootSelected;
-  if (sel.has(instanceId)) sel.delete(instanceId);
-  else sel.add(instanceId);
-  render();
+const REWARD_ICON = { pick: "🎁", random: "❓", salvage: "◆" };
+
+function rewardTileStatus(r) {
+  if (!r.done) return null;
+  return r.taken ? `Took ${r.taken.name}` : "Skipped";
+}
+
+// One clickable reward row on the rewards list.
+function renderRewardTile(s, r, index) {
+  return el(
+    "div",
+    {
+      class: ["reward-tile", r.done ? "reward-done" : null],
+      onClick: r.done ? null : () => openReward(index),
+    },
+    [
+      el("span", { class: "reward-icon", text: REWARD_ICON[r.kind] || "🎁" }),
+      el("span", { class: "reward-label", text: r.label }),
+      r.done
+        ? el("span", { class: "reward-status", text: rewardTileStatus(r) })
+        : el("span", { class: "reward-hint", text: "Click to open" }),
+    ]
+  );
+}
+
+// Decision panel for the currently-open reward.
+function renderRewardDecision(s, r) {
+  const panel = el("div", { class: "reward-decision" });
+  const heading = {
+    pick: "Choose a card to add to your pack",
+    random: "You found something. Take it?",
+    salvage: "Valuable salvage! Take it?",
+  }[r.kind] || r.label;
+
+  panel.append(el("h3", { class: "reward-decision-title", text: heading }));
+  panel.append(
+    el(
+      "div",
+      { class: "loot-grid" },
+      r.cards.map((c) =>
+        renderCardFace(s, c, {
+          showSell: r.kind === "salvage",
+          onClick: (e) => {
+            // golden burst + card flies into the pack, then the state change
+            if (typeof spawnRewardPickFx === "function") spawnRewardPickFx(e.currentTarget);
+            chooseRewardCard(c.instanceId);
+          },
+        })
+      )
+    )
+  );
+  panel.append(
+    el("div", { class: "loot-buttons" }, [
+      el("button", {
+        class: ["btn", "btn-primary"],
+        text: r.kind === "pick" ? "Skip (+1 credit)" : "Skip",
+        onClick: skipReward,
+      }),
+      el("button", { class: "btn", text: "Back", onClick: closeReward }),
+    ])
+  );
+  return panel;
 }
 
 function renderLoot(s) {
   const app = document.getElementById("app");
   const screen = el("div", { class: "loot-screen" });
 
-  screen.append(el("h2", { class: "loot-title", text: "Salvage" }));
+  screen.append(el("h2", { class: "loot-title", text: "Rewards" }));
 
-  if (s.pendingLootCredits > 0) {
-    screen.append(
-      el("p", { class: "muted", text: `+${s.pendingLootCredits} credits recovered.` })
-    );
+  if (s.pendingRewardCredits > 0) {
+    screen.append(el("p", { class: "muted", text: `+${s.pendingRewardCredits} credits recovered.` }));
   }
-
   if (s.pendingArtifact) {
     screen.append(
-      el("p", { class: "artifact-drop", text: `Artifact acquired: ${s.pendingArtifact.name} — ${s.pendingArtifact.description}` })
+      el("p", { class: "artifact-drop", text: `Relic acquired: ${s.pendingArtifact.name} — ${s.pendingArtifact.description}` })
     );
   }
 
-  if (s.pendingLoot.length === 0) {
-    screen.append(el("p", { class: "muted", text: "No items dropped." }));
+  const active = s.activeRewardIndex != null ? s.pendingRewards[s.activeRewardIndex] : null;
+
+  if (active && !active.done) {
+    screen.append(renderRewardDecision(s, active));
   } else {
-    const grid = el(
-      "div",
-      { class: "loot-grid" },
-      s.pendingLoot.map((c) =>
-        renderCardFace(s, c, {
-          showSell: true,
-          selected: s.lootSelected.has(c.instanceId),
-          onClick: () => toggleLoot(c.instanceId),
-        })
-      )
+    if (!s.pendingRewards.length) {
+      screen.append(el("p", { class: "muted", text: "Nothing salvageable here." }));
+    } else {
+      screen.append(
+        el("div", { class: "reward-list" }, s.pendingRewards.map((r, i) => renderRewardTile(s, r, i)))
+      );
+    }
+    screen.append(
+      el("div", { class: "loot-buttons" }, [
+        el("button", { class: ["btn", "btn-primary"], text: "Continue", onClick: () => leaveLoot() }),
+        el("button", { class: "btn", text: "View Deck", onClick: openDeckModal }),
+        el("button", { class: "btn", text: "Abandon Run", onClick: () => goToStatus(Status.TITLE) }),
+      ])
     );
-    screen.append(grid);
   }
-
-  const buttons = el("div", { class: "loot-buttons" }, [
-    el("button", {
-      class: ["btn", "btn-primary"],
-      text: `Take Selected (${s.lootSelected.size})`,
-      onClick: () => {
-        takeLoot([...s.lootSelected]);
-        leaveLoot();
-      },
-    }),
-    el("button", {
-      class: "btn",
-      text: "Take All",
-      onClick: () => {
-        takeLoot(s.pendingLoot.map((c) => c.instanceId));
-        leaveLoot();
-      },
-    }),
-    el("button", { class: "btn", text: "Leave All", onClick: () => leaveLoot() }),
-    el("button", { class: "btn", text: "View Deck", onClick: openDeckModal }),
-    el("button", { class: "btn", text: "Abandon Run", onClick: () => goToStatus(Status.TITLE) }),
-  ]);
-  screen.append(buttons);
 
   app.append(screen);
 }

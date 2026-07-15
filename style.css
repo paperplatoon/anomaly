@@ -516,6 +516,46 @@ body::after {
   font-size: 0.9rem;
 }
 
+/* post-combat reward tiles */
+.reward-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 440px;
+}
+.reward-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border: 1px solid var(--accent-dim);
+  border-radius: 10px;
+  background: var(--bg-panel);
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.reward-tile:hover:not(.reward-done) {
+  border-color: var(--accent);
+  background: var(--bg-panel-2);
+}
+.reward-tile.reward-done {
+  opacity: 0.55;
+  cursor: default;
+  border-style: dashed;
+}
+.reward-icon { font-size: 1.3rem; }
+.reward-label { font-weight: 700; }
+.reward-hint { margin-left: auto; color: var(--ink-dim); font-size: 0.78rem; }
+.reward-status { margin-left: auto; color: var(--accent); font-size: 0.82rem; }
+.reward-decision {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.reward-decision-title { margin: 0; color: var(--accent); }
+
 /* relic tile reward screen */
 .relic-reward .relic-card {
   max-width: 460px;
@@ -854,6 +894,8 @@ body::after {
 }
 /* "Recharging" is a keyword — dark blue so it reads as one */
 .card-line.kw-recharging { color: #1c4fa0; font-weight: 700; }
+/* live computed totals ("[24 total]") pop in bold */
+.calc-total { font-weight: 800; color: #000; }
 
 /* ----- ----- ----- loot screen ----- ----- ----- */
 
@@ -1379,11 +1421,60 @@ body::after {
 
 .enemy-death {
   pointer-events: none;
-  animation: enemyDeath 0.6s ease-in forwards;
+  animation: enemyDeath 0.68s ease-in forwards;
 }
 @keyframes enemyDeath {
   0% { opacity: 1; filter: none; transform: none; }
-  100% { opacity: 0; filter: grayscale(1) brightness(0.55); transform: translateY(14px) scale(0.85); }
+  18% { filter: brightness(2.2) saturate(0.4); transform: scale(1.06); }
+  55% { opacity: 0.8; filter: grayscale(0.8) brightness(0.8); transform: rotate(-5deg) scale(0.96); }
+  100% { opacity: 0; filter: grayscale(1) brightness(0.4); transform: translateY(26px) rotate(-10deg) scale(0.7); }
+}
+/* dark shockwave ring at the moment of death */
+.death-burst {
+  position: fixed;
+  width: 60px;
+  height: 60px;
+  transform: translate(-50%, -50%);
+  border: 3px solid rgba(255, 235, 200, 0.95);
+  border-radius: 50%;
+  box-shadow: 0 0 24px rgba(255, 180, 90, 0.8), inset 0 0 16px rgba(160, 40, 20, 0.6);
+  pointer-events: none;
+  z-index: 115;
+  animation: deathBurst 0.7s ease-out forwards;
+}
+@keyframes deathBurst {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+  18% { opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(2.8); opacity: 0; }
+}
+
+/* golden reward-pick burst */
+.gold-burst {
+  position: fixed;
+  width: 70px;
+  height: 70px;
+  transform: translate(-50%, -50%);
+  border: 3px solid #ffd76a;
+  border-radius: 50%;
+  box-shadow: 0 0 26px rgba(255, 215, 106, 0.9), inset 0 0 18px rgba(255, 215, 106, 0.6);
+  pointer-events: none;
+  z-index: 130;
+  animation: deathBurst 0.65s ease-out forwards;
+}
+.gold-spark {
+  position: fixed;
+  width: 7px;
+  height: 7px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, #fff2c0, #ffd76a 60%, transparent);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 130;
+  animation: goldSpark 0.6s ease-out forwards;
+}
+@keyframes goldSpark {
+  0% { transform: translate(-50%, -50%); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.3); opacity: 0; }
 }
 
 /* --- phase banner --- */
@@ -2021,6 +2112,106 @@ body::after {
   inset: 6px;
   border-radius: 3px;
   border: 1px dashed rgba(182, 194, 74, 0.35);
+}
+
+/* ----- radiation pulse: hazard ring + flaring ☢ over the player ----- */
+.rad-pulse {
+  position: fixed;
+  width: 54px;
+  height: 54px;
+  transform: translate(-50%, -50%);
+  border: 3px solid rgba(154, 209, 75, 0.9);
+  border-radius: 50%;
+  box-shadow: 0 0 22px rgba(154, 209, 75, 0.7), inset 0 0 14px rgba(154, 209, 75, 0.5);
+  pointer-events: none;
+  z-index: 115;
+  animation: radPulse 0.65s ease-out forwards;
+}
+@keyframes radPulse {
+  0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+  25% { opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0; }
+}
+.rad-glyph {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  font-size: 2.2rem;
+  color: #cdea48;
+  text-shadow: 0 0 12px rgba(154, 209, 75, 0.9), -1px -1px 0 #1c2410, 1px 1px 0 #1c2410;
+  pointer-events: none;
+  z-index: 116;
+  animation: radGlyph 0.65s ease-out forwards;
+}
+@keyframes radGlyph {
+  0% { transform: translate(-50%, -50%) scale(0.4) rotate(-30deg); opacity: 0; }
+  30% { transform: translate(-50%, -50%) scale(1.25) rotate(0deg); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1) rotate(14deg) translateY(-18px); opacity: 0; }
+}
+
+/* ----- auto-block pulse: blue gridline diamond (shield-bubble language) ----- */
+.autoblock-pulse {
+  position: fixed;
+  width: 64px;
+  height: 64px;
+  transform: translate(-50%, -50%);
+  border: 2px dashed rgba(130, 195, 255, 0.9);
+  border-radius: 14px;
+  background:
+    repeating-linear-gradient(0deg, rgba(120, 190, 255, 0.14) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(90deg, rgba(120, 190, 255, 0.14) 0 1px, transparent 1px 8px);
+  box-shadow: 0 0 20px rgba(90, 160, 255, 0.65), inset 0 0 12px rgba(90, 160, 255, 0.4);
+  pointer-events: none;
+  z-index: 115;
+  animation: autoblockPulse 0.66s ease-out forwards;
+}
+@keyframes autoblockPulse {
+  0% { transform: translate(-50%, -50%) scale(0.45) rotate(0deg); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(2) rotate(28deg); opacity: 0; }
+}
+
+/* ----- knife slash: bright arcing swipe + gleam streak (vs the gun tracer) ----- */
+.knife-slash {
+  position: fixed;
+  width: 116px;
+  height: 116px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 112;
+}
+.knife-slash::before {
+  /* the arc of the swing */
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 5px solid transparent;
+  border-top-color: #f6f9ff;
+  border-right-color: rgba(190, 212, 255, 0.75);
+  filter: drop-shadow(0 0 9px rgba(220, 235, 255, 0.95));
+  animation: knifeArc 0.34s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+.knife-slash::after {
+  /* sharp gleam line across the wound */
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 132px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #ffffff 45%, #9fb6e0 60%, transparent);
+  transform: translate(-50%, -50%) rotate(45deg) scaleX(0.15);
+  animation: knifeGleam 0.34s ease-out forwards;
+}
+@keyframes knifeArc {
+  0% { transform: rotate(-150deg) scale(0.5); opacity: 0; }
+  22% { opacity: 1; }
+  100% { transform: rotate(45deg) scale(1.18); opacity: 0; }
+}
+@keyframes knifeGleam {
+  0% { transform: translate(-50%, -50%) rotate(45deg) scaleX(0.1); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: translate(-50%, -50%) rotate(45deg) scaleX(1.3); opacity: 0; }
 }
 
 /* ----- enemy motion: windup / lunge / flex / hit ----- */

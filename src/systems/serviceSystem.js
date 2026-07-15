@@ -13,12 +13,13 @@ function priceForCard(card) {
 }
 
 function generateTraderOffers() {
-  const pool = Object.values(cardTemplates).filter((t) => t.rarity !== "starter");
+  // starters and "special" cards (enemy-inflicted, Valuable Salvage) never stock
+  const pool = Object.values(cardTemplates).filter((t) => t.rarity !== "starter" && t.rarity !== "special");
   const byRarity = (r) => pool.filter((t) => t.rarity === r);
   const pick = (arr) => arr[randInt(0, arr.length - 1)];
   const commons = byRarity("common");
   const uncommons = byRarity("uncommon");
-  const rares = byRarity("rare").concat(byRarity("special"));
+  const rares = byRarity("rare");
 
   const templates = [
     pick(commons), pick(commons),

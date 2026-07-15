@@ -111,10 +111,11 @@ function createInitialState() {
     currentTrader: null,
     currentEvent: null,
     runResult: null,
-    pendingLoot: [],
-    pendingLootCredits: 0,
+    // post-combat rewards: [{ kind: pick|random|salvage, label, cards, done }]
+    pendingRewards: [],
+    activeRewardIndex: null, // reward currently open on its decision screen
+    pendingRewardCredits: 0,
     pendingArtifact: null,
-    lootSelected: new Set(),
     beaconExtract: false,
     meta: {
       preservedItems: [],
