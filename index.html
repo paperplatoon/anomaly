@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project Zone</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- Load order: util -> state -> primitives -> data -> systems ->
+       render (register renderers) -> main (boots) -->
+  <script src="src/util.js"></script>
+  <script src="src/state.js"></script>
+  <script src="src/primitives.js"></script>
+  <script src="src/data/cards.js"></script>
+  <script src="src/data/enemies.js"></script>
+  <script src="src/data/landmarks.js"></script>
+  <script src="src/data/events.js"></script>
+  <script src="src/data/artifacts.js"></script>
+  <script src="src/data/equipment.js"></script>
+  <script src="src/systems/artifactSystem.js"></script>
+  <script src="src/systems/equipmentSystem.js"></script>
+  <script src="src/systems/combatSystem.js"></script>
+  <script src="src/systems/rewardSystem.js"></script>
+  <script src="src/systems/mapSystem.js"></script>
+  <script src="src/systems/serviceSystem.js"></script>
+  <script src="src/systems/persistence.js"></script>
+  <script src="src/render/animations.js"></script>
+  <script src="src/render/tooltips.js"></script>
+  <script src="src/render/renderCards.js"></script>
+  <script src="src/render/renderMisc.js"></script>
+  <script src="src/render/renderCombat.js"></script>
+  <script src="src/render/renderLoot.js"></script>
+  <script src="src/render/renderMap.js"></script>
+  <script src="src/render/renderServices.js"></script>
+  <script src="src/render/renderEquipment.js"></script>
+  <script src="src/render/renderDev.js"></script>
+  <script src="src/main.js"></script>
+</body>
+</html>
